@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Extinction Chess Engine — Henry Liang</title>
+  <meta name="description" content="An AlphaZero-style neural network trained from scratch to play extinction chess — a variant with no checkmate, where you win by capturing every piece of any one type.">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Extinction Chess Engine — Henry Liang">
+  <meta property="og:description" content="1,046 training iterations of self-play reinforcement learning on a chess variant with no established theory.">
+  <meta property="og:image" content="img/og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/project.css">
+  <!-- Bump ?v= whenever you edit chess.css/chess.js. python -m http.server
+       sends no Cache-Control, so browsers hold onto the old file and you end
+       up debugging code that isn't running. -->
+  <link rel="stylesheet" href="css/chess.css?v=11">
+
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.setAttribute('data-theme', saved || (prefersLight ? 'light' : 'dark'));
+      } catch (e) {}
+    })();
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="nav is-stuck" id="nav">
+    <div class="container nav__inner">
+      <!-- STANDALONE MODE: this page is the site root while the portfolio
+           home page is unfinished (parked at index-home.wip.html, untracked).
+           Nav points at this page's own sections rather than a home page that
+           isn't published. To restore the full site, see site_briefing.txt §14. -->
+      <a href="#top" class="nav__logo">
+        <span class="nav__logo-mark" aria-hidden="true"></span>
+        <span>Henry Liang</span>
+      </a>
+      <nav class="nav__links" id="nav-links" aria-label="Main">
+        <a href="#variant">The variant</a>
+        <a href="#play">Play</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#training">Training</a>
+      </nav>
+      <div class="nav__actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch color theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z"/></svg>
+        </button>
+        <button class="icon-btn nav__burger" id="nav-toggle" type="button"
+                aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <article>
+      <header class="case__head" id="top">
+        <div class="container case__head-inner">
+          <h1 class="case__title">Teaching a network to play a game<br>nobody has theory for</h1>
+
+          <p class="case__lede">
+            An AlphaZero-style engine trained from scratch on <strong>extinction
+            chess</strong> — a variant with no checkmate, where you win by
+            capturing every piece of any single type. No opening books, no
+            engines to learn from, no human games. Just self-play, 1,046
+            iterations deep and still running.
+          </p>
+
+          <dl class="case__facts">
+            <div><dt>Role</dt><dd>Sole developer</dd></div>
+            <div><dt>Timeline</dt><dd>Sep 2025 — ongoing</dd></div>
+            <div><dt>Training</dt><dd>WATcloud SLURM cluster</dd></div>
+            <div><dt>Stack</dt><dd>PyTorch, C++, Modal, NumPy</dd></div>
+          </dl>
+
+          <!-- TODO: add links once the repo is public, or delete this block -->
+          <div class="case__actions">
+            <a class="btn btn--ghost" href="#architecture">Read the architecture</a>
+          </div>
+        </div>
+      </header>
+
+      <!-- ─── The variant ─── -->
+      <div class="container case__body">
+        <h2 id="variant">The variant</h2>
+        <p>
+          Extinction chess keeps every rule of standard chess — castling, en
+          passant, promotion — and replaces the win condition. There is no
+          check and no checkmate. Kings are ordinary pieces: they can be
+          captured, and you can promote a pawn <em>into</em> one.
+        </p>
+        <p>
+          You win by driving any one of your opponent's piece types to zero.
+          Take their last knight, and the game ends immediately. That single
+          change cascades through everything.
+        </p>
+
+        <div class="rulediff">
+          <div class="rulediff__col">
+            <h3>Standard chess</h3>
+            <ul>
+              <li>Win by checkmating the king</li>
+              <li>King is uniquely protected</li>
+              <li>Material trades are broadly good when ahead</li>
+              <li>Centuries of opening theory</li>
+            </ul>
+          </div>
+          <div class="rulediff__col rulediff__col--accent">
+            <h3>Extinction chess</h3>
+            <ul>
+              <li>Win by eliminating any one piece type</li>
+              <li>King is an ordinary piece; promotion to king is legal</li>
+              <li>Trading down can <em>lose</em> you the game instantly</li>
+              <li>Essentially no published theory</li>
+            </ul>
+          </div>
+        </div>
+
+        <figure class="board-fig">
+          <svg viewBox="0 0 360 360" class="board" role="img"
+               aria-label="Board diagram: white bishop capturing black's last knight, ending the game by extinction">
+            <defs>
+              <pattern id="sq" width="90" height="90" patternUnits="userSpaceOnUse">
+                <rect width="90" height="90" fill="var(--board-light)"/>
+                <rect width="45" height="45" fill="var(--board-dark)"/>
+                <rect x="45" y="45" width="45" height="45" fill="var(--board-dark)"/>
+              </pattern>
+            </defs>
+            <rect width="360" height="360" fill="url(#sq)"/>
+            <!-- highlight the capture square -->
+            <rect x="180" y="135" width="45" height="45" fill="var(--accent-3)" opacity=".55"/>
+            <!-- pieces -->
+            <text x="202" y="170" class="pc pc--b">♞</text>
+            <text x="112" y="260" class="pc pc--w">♗</text>
+            <text x="292" y="80"  class="pc pc--b">♚</text>
+            <text x="67"  y="80"  class="pc pc--b">♜</text>
+            <!-- capture arrow -->
+            <line x1="130" y1="240" x2="192" y2="178" class="arrow"/>
+            <polygon points="202,168 190,172 198,180" class="arrowhead"/>
+          </svg>
+          <figcaption>
+            Black has exactly one knight left. White plays <strong>Bxn</strong>
+            and the game ends on the spot — regardless of material, king safety,
+            or anything else on the board.
+          </figcaption>
+        </figure>
+
+        <p>
+          The strategic consequences are strange. Pieces you would happily trade
+          in normal chess become liabilities the moment they're your last of a
+          kind. A rook you'd usually cash in becomes untouchable. And because
+          every piece type is a potential losing condition, the engine has to
+          track seven simultaneous extinction races at once.
+        </p>
+
+        <blockquote class="case__quote">
+          <p>
+            Because the variant has no literature, there was no way to check
+            whether the engine was playing <em>well</em> — only whether it was
+            playing better than its former self.
+          </p>
+        </blockquote>
+
+        <!-- ─── Playable demo ─── -->
+        <h2 id="play">Play it</h2>
+        <p>
+          This is the real engine — <code>az_iter1040</code>, the same
+          checkpoint described below, running on a GPU that's allocated to your
+          game for as long as you're playing. It thinks while you think.
+        </p>
+
+        <div class="play" id="play-app">
+          <noscript>
+            <p class="play__msg">The board needs JavaScript enabled.</p>
+          </noscript>
+
+          <div class="play__bar">
+            <button class="btn btn--primary" id="pl-new" type="button">New game</button>
+            <!-- Labelled by clock rather than Easy/Standard/Strong: each tier
+                 is a time control, and its sim ceiling is chosen to be
+                 reachable within that clock (see TIERS in js/chess.js). -->
+            <label class="play__field">
+              <span>Time control</span>
+              <select id="pl-level">
+                <option value="800">3 + 2 · 800 sims</option>
+                <option value="2000" selected>5 + 3 · 2000 sims</option>
+                <option value="8000">10 + 10 · 8000 sims</option>
+              </select>
+            </label>
+            <label class="play__field">
+              <span>You play</span>
+              <select id="pl-color">
+                <option value="white" selected>White</option>
+                <option value="black">Black</option>
+              </select>
+            </label>
+            <button class="btn btn--ghost" id="pl-resign" type="button" disabled>Resign</button>
+          </div>
+
+          <div class="play__main">
+            <div class="play__boardwrap">
+              <div class="board" id="pl-board" role="grid" aria-label="Chess board"></div>
+              <div class="promo" id="pl-promo" hidden role="dialog" aria-label="Choose promotion piece">
+                <p>Promote to</p>
+                <div class="promo__opts" id="pl-promo-opts"></div>
+              </div>
+            </div>
+
+            <aside class="play__side">
+              <div class="clocks">
+                <div class="clock" id="pl-clock-top"><span class="clock__who">Engine</span><span class="clock__t">5:00</span></div>
+                <div class="clock" id="pl-clock-bot"><span class="clock__who">You</span><span class="clock__t">5:00</span></div>
+              </div>
+
+              <div class="status" id="pl-status">Press <strong>New game</strong> to wake the engine.</div>
+
+              <!-- Piece counts ARE the win condition, so they're the main readout -->
+              <div class="tracker">
+                <h4>Extinction tracker</h4>
+                <p class="tracker__hint">Lose every piece of any one type and you lose.</p>
+                <div class="tracker__grid" id="pl-tracker"></div>
+                <label class="toggle">
+                  <input type="checkbox" id="pl-endang">
+                  <span>Highlight endangered pieces</span>
+                </label>
+                <p class="toggle__key" id="pl-endang-key" hidden>
+                  <span class="key key--mine"></span> yours
+                  <span class="key key--foe"></span> engine's
+                </p>
+              </div>
+            </aside>
+
+            <section class="play__analysis" aria-label="Engine analysis">
+              <h4 class="panel__h">Engine analysis</h4>
+              <div class="analysis__body" id="pl-analysis-body">
+                <p class="analysis__empty">No move yet.</p>
+              </div>
+
+              <!-- Review is revealed only once the game is over — showing the
+                   engine's read of your position mid-game would be cheating. -->
+              <div class="review" id="pl-review" hidden>
+                <div class="review__bar">
+                  <strong>Review</strong>
+                  <div class="review__nav">
+                    <button type="button" id="pl-prev" aria-label="Previous move">←</button>
+                    <button type="button" id="pl-next" aria-label="Next move">→</button>
+                    <button type="button" id="pl-live" aria-label="Jump to final position">End</button>
+                  </div>
+                </div>
+                <p class="review__hint">Click a move, or use ← → keys.</p>
+                <ol class="movelist" id="pl-movelist"></ol>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ─── Architecture ─── -->
+        <h2 id="architecture">Architecture</h2>
+        <p>
+          The engine follows the AlphaZero template: a single network with a
+          policy head and a value head, guiding Monte Carlo tree search. Both
+          heads train purely on the outcomes of the network's own games.
+        </p>
+
+        <div class="spec">
+          <div class="spec__row"><span>Residual tower</span><span>20 blocks × 256 filters</span></div>
+          <div class="spec__row"><span>Parameters</span><span>~24.5M (98 MB per checkpoint)</span></div>
+          <div class="spec__row"><span>Input encoding</span><span>115 planes, 8×8</span></div>
+          <div class="spec__row"><span>Policy output</span><span>4,864 (76 move planes × 64 squares)</span></div>
+          <div class="spec__row"><span>Search</span><span>MCTS, 100–800 simulations/move</span></div>
+        </div>
+
+        <p>
+          The input encoding is where the variant shows up. Alongside the usual
+          piece planes, board history, castling rights and move clock, there's a
+          dedicated <strong>endangered plane</strong> — an explicit signal for
+          which piece types are close to extinction. The network could in
+          principle infer this by counting pieces, but making it an input rather
+          than something to be learned lets the residual tower spend its
+          capacity on strategy instead of arithmetic.
+        </p>
+
+        <h3>Terminal-position drilling</h3>
+        <p>
+          Pure self-play produced a specific, persistent weakness: the engine
+          would build a winning position and then fail to actually take the
+          final piece. Extinction wins are single, exact captures, and they show
+          up too rarely in ordinary self-play for the value head to weight them
+          properly.
+        </p>
+        <p>
+          The fix was a supplementary training phase. After each iteration's
+          normal training, the trainer generates synthetic near-terminal
+          positions — boards one capture away from extinction — and drills the
+          network on them at a reduced learning rate, with a second, harder pool
+          trained more gently still. It's a targeted correction for a failure
+          mode that self-play alone doesn't sample often enough to fix.
+        </p>
+
+        <!-- ─── Training ─── -->
+        <h2 id="training">Training at scale</h2>
+        <p>
+          Every iteration plays ~400 complete games against itself, harvests
+          roughly 15,000 positions, and trains on a rolling buffer of the last
+          five iterations. Then it does it again.
+        </p>
+
+        <div class="case__stats">
+          <div class="stat"><span class="stat__num">1,046</span><span class="stat__label">training iterations completed</span></div>
+          <div class="stat"><span class="stat__num">~7M</span><span class="stat__label">network evaluations per iteration</span></div>
+          <div class="stat"><span class="stat__num">3.3 hrs</span><span class="stat__label">wall-clock per iteration</span></div>
+          <div class="stat"><span class="stat__num">110</span><span class="stat__label">checkpoints archived (9.5 GB)</span></div>
+        </div>
+
+        <p>
+          That works out to well over 400,000 self-play games and several
+          billion network evaluations, spread across months of cluster time on
+          a mix of RTX 3090, 4090 and A10G nodes. Self-play generation is the
+          bottleneck by an enormous margin — the training step itself takes
+          about two minutes of each three-and-a-half-hour cycle.
+        </p>
+
+        <h3>The infrastructure is most of the work</h3>
+        <p>
+          A training run this long is really an exercise in operations. Jobs hit
+          SLURM wall-time limits and have to resubmit themselves mid-run,
+          preserving the replay buffer and optimizer state. Nodes fail. GPUs
+          crash mid-benchmark. At one point a driver upgrade drained the node
+          that generated supplementary games, and the loss curves quietly
+          <em>improved</em> — not because the model got better, but because a
+          smaller training set is a cleaner, weaker signal. Reading that
+          correctly, rather than celebrating it, mattered.
+        </p>
+        <p>
+          A separate incident cost a full iteration of logs: a job died with a
+          node failure, SLURM auto-requeued it, and the requeued run truncated
+          the original log file on open. The fix was one flag — appending rather
+          than truncating — but finding it meant reconstructing what happened
+          from checkpoint timestamps and the raw <code>.npz</code> buffers on disk.
+        </p>
+
+        <h3>Knowing whether it's improving</h3>
+        <p>
+          With no external opponent to measure against, strength is assessed
+          entirely through self-reference. Every tenth checkpoint triggers an
+          automated battery: head-to-head matches against recent iterations,
+          against distant historical anchors, a fixed tactical suite, and a
+          "win-taking" test that checks whether the engine converts positions
+          where an extinction capture is available.
+        </p>
+        <p>
+          This is noisier than it sounds. Head-to-head results between adjacent
+          checkpoints sit inside a ±7% noise floor, so a single matchup proves
+          nothing. Distant anchors are the load-bearing signal — if the current
+          model still beats a checkpoint from 900 iterations ago at the same
+          rate, it hasn't regressed, even when neighbouring comparisons look
+          flat.
+        </p>
+
+        <div class="case__stats">
+          <div class="stat"><span class="stat__num">90.0%</span><span class="stat__label">vs. the iteration-100 baseline</span></div>
+          <div class="stat"><span class="stat__num">100%</span><span class="stat__label">vs. random play</span></div>
+          <div class="stat"><span class="stat__num">92%</span><span class="stat__label">on the tactical suite</span></div>
+          <div class="stat"><span class="stat__num">96%</span><span class="stat__label">win-taking conversion at high sims</span></div>
+        </div>
+
+        <h3>Reading a plateau correctly</h3>
+        <p>
+          Around iteration 1,020 progress stalled — the model scored 51% against
+          its own predecessor from ten iterations earlier, statistically
+          indistinguishable from a tie. The diagnosis was that MCTS exploration
+          had narrowed: the search kept re-confirming what the network already
+          believed instead of testing alternatives.
+        </p>
+        <p>
+          Widening the root exploration parameters produced exactly the pattern
+          you'd hope for and exactly the one that looks like failure. Policy loss
+          rose. Head-to-head results against recent checkpoints dipped below 50%.
+          But the tactical suite jumped 15 points, and performance against
+          distant historical anchors held steady. The model wasn't worse — it
+          was playing <em>differently</em>, which depresses head-to-head scores
+          against its own recent lineage. Reverting on the loss curve alone
+          would have thrown away a real improvement.
+        </p>
+
+        <!-- ─── Reflection ─── -->
+        <h2 id="reflection">What I'd do differently</h2>
+        <p>
+          <strong>Batched evaluation from the start.</strong> The evaluator
+          scores one position at a time, which leaves the GPU badly
+          underutilised during self-play. Batching across parallel games is the
+          single biggest available speedup and it's structurally awkward to
+          retrofit.
+        </p>
+        <p>
+          <strong>A fixed external benchmark.</strong> Everything is measured
+          against the model's own history, which detects regression well but
+          can't detect a shared blind spot. Even a modest hand-written
+          alpha-beta opponent would have provided an absolute reference point.
+        </p>
+        <p>
+          <strong>A serialisation format on day one.</strong> There's still no
+          FEN equivalent for extinction positions, so positions move around as
+          replayed move histories. That was fine for a training pipeline and is
+          the first thing that needs solving to put the engine on the web.
+        </p>
+
+        <aside class="callout">
+          <h3>Want to try it?</h3>
+          <p>
+            The engine is <a href="#play">playable above</a> — a GPU spins up
+            for your game and shuts down when you're done.
+          </p>
+        </aside>
+      </div>
+
+      <!-- STANDALONE MODE: the "next project / all work" nav returns when the
+           portfolio home page is published. See site_briefing.txt §14. -->
+      <nav class="case__next" aria-label="Play the engine">
+        <div class="container">
+          <p class="section__label">Try it</p>
+          <a class="case__next-link" href="#play">
+            <span>Play the engine</span>
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p>&copy; <span id="year">2026</span> Henry Liang</p>
+      <!-- TODO: real contact once the home page lands -->
+      <p class="footer__note"><a href="mailto:henryliang416525@gmail.com">henryliang416525@gmail.com</a></p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/chess.js?v=11"></script>
+</body>
+</html>

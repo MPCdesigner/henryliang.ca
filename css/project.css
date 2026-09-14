@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Case study pages — loaded after style.css, only on project pages.
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* ─── Header ─── */
+.case__head {
+  padding-block: clamp(3rem, 6vw, 5.5rem) clamp(2rem, 4vw, 3rem);
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+.case__head-inner { max-width: 780px; }
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  transition: color 0.2s var(--ease), gap 0.2s var(--ease);
+}
+.back-link:hover { color: var(--text); gap: 0.7rem; }
+
+.case__title { font-size: var(--step-3); margin-bottom: 1.1rem; }
+
+.case__lede {
+  font-size: var(--step-1);
+  color: var(--text-muted);
+  max-width: 60ch;
+  margin-bottom: 2.5rem;
+}
+
+.case__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  padding-block: 1.5rem;
+  border-block: 1px solid var(--border);
+  margin: 0 0 2rem;
+}
+.case__facts dt {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 0.35rem;
+}
+.case__facts dd { margin: 0; font-weight: 500; font-size: var(--step--1); }
+
+.case__actions { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+
+/* ─── Hero image ─── */
+.case__hero {
+  margin: clamp(-3rem, -5vw, -2rem) 0 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.case__hero img { width: 100%; }
+
+/* ─── Body prose ─── */
+.case__body {
+  max-width: 720px;
+  padding-block: clamp(3rem, 6vw, 5rem);
+  font-size: var(--step-0);
+}
+.case__body h2 {
+  font-size: var(--step-2);
+  margin: 3rem 0 1rem;
+}
+.case__body h2:first-child { margin-top: 0; }
+.case__body p { color: var(--text-muted); }
+
+.case__list {
+  list-style: none;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+}
+.case__list li {
+  position: relative;
+  padding-left: 1.6rem;
+  margin-bottom: 0.7rem;
+}
+.case__list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--gradient);
+}
+
+.case__quote {
+  margin: 2.5rem 0;
+  padding: 1.75rem 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* A gradient border-image would kill the border-radius, so the accent bar
+     is a solid color instead. */
+  border-left: 3px solid var(--accent-2);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.case__quote p {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  color: var(--text);
+  margin-bottom: 0.9rem;
+}
+.case__quote cite {
+  font-style: normal;
+  font-size: var(--step--1);
+  color: var(--text-faint);
+}
+
+/* ─── Result tiles ─── */
+.case__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 2.5rem 0;
+}
+.stat {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.stat__num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.stat__label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: var(--step--1);
+  color: var(--text-muted);
+}
+
+/* ─── Next project ─── */
+.case__next {
+  padding-block: clamp(3rem, 5vw, 4.5rem);
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border);
+}
+.case__next-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  transition: color 0.25s var(--ease);
+}
+.case__next-link:hover { color: var(--accent-2); }
+.case__next-link span:last-child { transition: transform 0.25s var(--ease); }
+.case__next-link:hover span:last-child { transform: translateX(8px); }
+
+.footer__note a { text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Case-study content blocks
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* ─── Two-column rule comparison ─── */
+.rulediff {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 2.5rem 0;
+}
+.rulediff__col {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.rulediff__col--accent {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border));
+}
+.rulediff__col h3 {
+  font-size: var(--step-0);
+  margin-bottom: 1rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rulediff__col--accent h3 { color: var(--accent-2); }
+.rulediff__col ul { list-style: none; }
+.rulediff__col li {
+  position: relative;
+  padding-left: 1.3rem;
+  margin-bottom: 0.7rem;
+  font-size: var(--step--1);
+  color: var(--text-muted);
+}
+.rulediff__col li:last-child { margin-bottom: 0; }
+.rulediff__col li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.rulediff__col--accent li::before { background: var(--accent-2); }
+
+/* ─── Board diagram ─── */
+:root { --board-light: #ebe3d7; --board-dark: #b08a63; }
+:root[data-theme="dark"] { --board-light: #d9cfc0; --board-dark: #8a6647; }
+
+.board-fig { margin: 2.5rem 0; }
+.board {
+  display: block;
+  width: min(360px, 100%);
+  margin-inline: auto;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.board .pc {
+  font-size: 40px;
+  /* Segoe UI Symbol carries the chess glyphs reliably on Windows */
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', serif;
+  text-anchor: middle;
+}
+.board .pc--w { fill: #fff; stroke: #333; stroke-width: 0.6; }
+.board .pc--b { fill: #1a1a1a; }
+.board .arrow {
+  stroke: var(--accent-3);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.board .arrowhead { fill: var(--accent-3); }
+
+.board-fig figcaption {
+  margin-top: 1rem;
+  font-size: var(--step--1);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 52ch;
+  margin-inline: auto;
+}
+
+/* ─── Spec table ─── */
+.spec {
+  margin: 2rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.spec__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--step--1);
+}
+.spec__row:last-child { border-bottom: 0; }
+.spec__row:nth-child(odd) { background: var(--surface); }
+.spec__row span:first-child { color: var(--text-muted); }
+.spec__row span:last-child {
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Callout ─── */
+.callout {
+  margin: 3rem 0 0;
+  padding: 1.75rem 2rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 35%, var(--border));
+  border-radius: var(--radius);
+}
+.callout h3 {
+  font-size: var(--step-1);
+  margin-bottom: 0.6rem;
+}
+.callout p { color: var(--text-muted); margin: 0; }
+
+/* ─── Inline code ─── */
+.case__body code {
+  padding: 0.15em 0.4em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  font-size: 0.88em;
+}

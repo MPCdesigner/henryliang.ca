@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Playable engine demo. Loaded only on the extinction chess page.
+   Uses the site tokens from style.css so it reads as part of the page.
+   ═════════════════════════════════════════════════════════════════════ */
+
+.play {
+  /* Break out of the 720px prose column to the site's 1140px container.
+     margin-left:50% puts the left edge at the prose column's midpoint, then
+     translateX(-50%) recentres on the viewport — so it lines up with the page
+     container regardless of how narrow the surrounding text is. */
+  width: min(1140px, calc(100vw - 2 * var(--space)));
+  margin: 2.5rem 0 3rem 50%;
+  transform: translateX(-50%);
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* ─── Control bar ─── */
+.play__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+.play__bar .btn { padding: 0.6rem 1.2rem; font-size: var(--step--1); }
+
+.play__field { display: flex; flex-direction: column; gap: 0.3rem; }
+.play__field > span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.play__field select {
+  padding: 0.55rem 0.7rem;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+.play__field select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Layout ─── */
+/* board | game panel | analysis */
+.play__main {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.15fr) 232px minmax(260px, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.play__boardwrap { position: relative; }
+
+.play__analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+.panel__h {
+  margin: 0;
+  font-size: var(--step--1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ─── Board ─── */
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  /* Rows must be explicit. Without this they're auto-sized, so ranks holding
+     pieces grow to fit the glyph while empty ranks collapse — the board stops
+     being square. */
+  grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: var(--board-light);
+  cursor: default;
+  font-size: clamp(22px, 5.2vw, 40px);
+  line-height: 1;
+}
+.sq--dark { background: var(--board-dark); }
+.sq--playable { cursor: pointer; }
+.sq--sel { box-shadow: inset 0 0 0 3px var(--accent-2); }
+.sq--last { background-image: linear-gradient(var(--accent-1), var(--accent-1)); background-blend-mode: soft-light; }
+
+/* Move hints: dot for a quiet move, ring for a capture */
+.sq--to::after {
+  content: '';
+  position: absolute;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--accent-2);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.sq--to.sq--cap::after {
+  width: 84%;
+  background: transparent;
+  border: 4px solid var(--accent-3);
+  opacity: 0.8;
+}
+
+/* Pieces use the SOLID glyph set for BOTH colours and get their colour from
+   CSS. The outline glyphs (♙♘…) render inconsistently across platforms and
+   some fonts turn them into emoji; the filled ones are reliable. */
+.pc {
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', serif;
+  pointer-events: none;
+}
+.pc--w { color: #fff; text-shadow: 0 0 1px #000, 0 0 2px #000, 0 1px 2px rgba(0,0,0,.5); }
+.pc--b { color: #14141c; text-shadow: 0 0 1px rgba(255,255,255,.35); }
+
+/* ─── Promotion picker ─── */
+.promo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.8rem;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(3px);
+  border-radius: 10px;
+  z-index: 5;
+}
+.promo p { margin: 0; text-align: center; font-weight: 600; }
+.promo__opts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+.promo__opts button {
+  width: 52px;
+  height: 52px;
+  font-size: 30px;
+  line-height: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', serif;
+}
+.promo__opts button:hover { border-color: var(--accent-2); }
+
+/* ─── Side panel ─── */
+.play__side { display: flex; flex-direction: column; gap: 1rem; }
+
+.clocks { display: flex; flex-direction: column; gap: 0.4rem; }
+.clock {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.clock--active { border-color: var(--accent-2); }
+.clock--low .clock__t { color: var(--accent-3); }
+.clock__who { font-size: var(--step--1); color: var(--text-muted); }
+.clock__t {
+  font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  padding: 0.7rem 0.85rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: var(--step--1);
+  color: var(--text-muted);
+  min-height: 3.2em;
+}
+.status--win { border-color: #22c55e; color: var(--text); }
+.status--lose { border-color: var(--accent-3); color: var(--text); }
+
+/* ─── Extinction tracker ─── */
+.tracker h4 {
+  margin: 0 0 0.2rem;
+  font-size: var(--step--1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.tracker__hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.tracker__grid {
+  display: grid;
+  grid-template-columns: auto repeat(6, 1fr);
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  text-align: center;
+}
+.tracker__lbl { color: var(--text-faint); text-align: left; align-self: center; }
+.tracker__hd { color: var(--text-faint); font-family: 'Segoe UI Symbol', serif; }
+.tracker__c {
+  padding: 0.25rem 0;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+}
+/* One left = one capture from losing */
+.tracker__c--danger {
+  background: color-mix(in srgb, var(--accent-3) 30%, var(--surface-2));
+  color: var(--text);
+  font-weight: 700;
+}
+.tracker__c--gone {
+  background: var(--accent-3);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ─── Analysis ─── */
+.analysis__body {
+  padding: 0.85rem;
+  font-size: 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.analysis__empty { color: var(--text-faint); margin: 0; }
+.analysis__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.evalbar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  margin: 0.4rem 0 0.6rem;
+}
+.evalbar__fill { height: 100%; background: var(--gradient); }
+
+.play__msg { color: var(--text-muted); }
+
+/* ─── Post-game review ─── */
+.review {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 0.7rem 0.85rem;
+}
+.review__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: var(--step--1);
+}
+.review__nav { display: flex; gap: 0.3rem; }
+.review__nav button {
+  min-width: 30px;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.review__nav button:hover:not(:disabled) { border-color: var(--accent-2); }
+.review__nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.review__hint {
+  margin: 0.4rem 0 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.movelist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 0.78rem;
+}
+.movelist li {
+  display: grid;
+  grid-template-columns: 1.8rem 1fr auto;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.3rem 0.4rem;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.movelist li:hover { background: var(--surface); }
+.movelist li.is-sel { background: var(--surface); color: var(--text); box-shadow: inset 2px 0 0 var(--accent-2); }
+.movelist__n { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.movelist__mv { font-family: 'Cascadia Code', Consolas, monospace; }
+.movelist__ev { font-variant-numeric: tabular-nums; font-size: 0.72rem; }
+.movelist li.is-you .movelist__mv { color: var(--text); }
+/* Marks a move the engine disagreed with — its own pick differed */
+.movelist__flag { color: var(--accent-3); }
+
+.analysis__pref {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+}
+/* Every visited move, not a top-N slice — so it needs to scroll. */
+.analysis__top {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.analysis__cap {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  margin-bottom: 0.3rem;
+}
+.analysis__mv {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* Visit share as a bar behind the row — makes the distribution readable
+   at a glance instead of forcing you to compare numbers. */
+.analysis__bar {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-1) 26%, transparent);
+  pointer-events: none;
+}
+.analysis__mv > * { position: relative; }
+.analysis__mv--played { box-shadow: inset 0 0 0 1px var(--accent-2); }
+.analysis__sq { font-family: 'Cascadia Code', Consolas, monospace; }
+.analysis__pct { color: var(--text-muted); }
+.analysis__v { color: var(--text-faint); font-size: 0.72rem; }
+
+/* ─── Endangered toggle ─── */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.toggle input { cursor: pointer; }
+.toggle__key {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+.key {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.key--mine { border: 2px solid var(--accent-3); }
+.key--foe { border: 2px solid #22c55e; }
+
+/* Endangered rings. ::before is free here — ::after is the move-hint dot. */
+.sq--endang::before {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+.sq--endang-mine::before { border: 3px solid var(--accent-3); }
+.sq--endang-foe::before  { border: 3px solid #22c55e; }
+
+/* Analysis drops below once three columns stop fitting */
+@media (max-width: 1040px) {
+  .play__main { grid-template-columns: minmax(0, 1fr) 232px; }
+  .play__analysis { grid-column: 1 / -1; }
+  .analysis__top { max-height: 220px; }
+}
+@media (max-width: 700px) {
+  .play__main { grid-template-columns: 1fr; }
+  .play__side { flex-direction: column; }
+}

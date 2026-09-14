@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# ── Not ready to publish ────────────────────────────────────────────────
+# Cloudflare Pages serves whatever is in this repo, so anything excluded
+# here is genuinely unreachable on the live site — not merely unlinked.
+# The portfolio home page is still entirely placeholder (bio, links,
+# experience all dummy). It stays local until it's written.
+# To publish the full site later, see site_briefing.txt §14.
+index-home.wip.html
+project.html
+
+# Art used only by the unpublished home page. Comes back with it.
+img/placeholder-*.svg
+img/portrait.svg
+img/extinction-chess.svg
+
+# Internal engineering notes — kept on disk for continuity across sessions,
+# but Cloudflare Pages would serve this at /site_briefing.txt where a visitor
+# could read candid project status, cost figures and infra detail. Keep local.
+site_briefing.txt
+
+# Temporary browser-test harnesses (_cdp*.py etc). Never commit these.
+_*.py
+_*.html
