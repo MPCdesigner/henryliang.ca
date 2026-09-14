@@ -7,10 +7,20 @@
   <title>Extinction Chess Engine — Henry Liang</title>
   <meta name="description" content="An AlphaZero-style neural network trained from scratch to play extinction chess — a variant with no checkmate, where you win by capturing every piece of any one type.">
 
+  <!-- Social scrapers need ABSOLUTE urls and will not render SVG, so og:image
+       points at a rasterised PNG (img/og-image.png, generated from the SVG).
+       Regenerate with:
+         chrome --headless=new --window-size=1200,630 \
+                --screenshot=img/og-image.png img/og-image.svg -->
+  <link rel="canonical" href="https://henryliang.ca/">
   <meta property="og:type" content="article">
+  <meta property="og:url" content="https://henryliang.ca/">
+  <meta property="og:site_name" content="Henry Liang">
   <meta property="og:title" content="Extinction Chess Engine — Henry Liang">
-  <meta property="og:description" content="1,046 training iterations of self-play reinforcement learning on a chess variant with no established theory.">
-  <meta property="og:image" content="img/og-image.svg">
+  <meta property="og:description" content="1,046 training iterations of self-play reinforcement learning on a chess variant with no established theory. Play the engine in your browser.">
+  <meta property="og:image" content="https://henryliang.ca/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
 
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
