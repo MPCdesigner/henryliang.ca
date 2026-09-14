@@ -1,0 +1,6 @@
+# Files in the repo that should NOT be served as part of the site.
+# Workers Static Assets reads this from the assets directory.
+wrangler.jsonc
+.assetsignore
+.gitignore
+README.md

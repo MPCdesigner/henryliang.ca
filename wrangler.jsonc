@@ -1,0 +1,15 @@
+{
+  // Static-assets-only Worker: no `main` script, so Cloudflare just serves
+  // the files in `directory` straight from its edge. This is the Workers
+  // Static Assets path, which has replaced Cloudflare Pages for new projects.
+  //
+  // Cloudflare's build container runs `npx wrangler deploy` against this file.
+  // Nothing is built or compiled — the site is plain HTML/CSS/JS.
+  "name": "henryliang-ca",
+  "compatibility_date": "2026-09-14",
+  "assets": {
+    "directory": "./",
+    // Serve /index.html for unknown paths instead of a bare 404 page.
+    "not_found_handling": "404-page"
+  }
+}
