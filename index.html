@@ -17,7 +17,7 @@
   <meta property="og:url" content="https://henryliang.ca/">
   <meta property="og:site_name" content="Henry Liang">
   <meta property="og:title" content="Extinction Chess Engine — Henry Liang">
-  <meta property="og:description" content="1,046 training iterations of self-play reinforcement learning on a chess variant with no established theory. Play the engine in your browser.">
+  <meta property="og:description" content="1,142 training iterations of self-play reinforcement learning on a chess variant with no established theory. Play the engine in your browser.">
   <meta property="og:image" content="https://henryliang.ca/img/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -87,7 +87,7 @@
             An AlphaZero-style engine trained from scratch on <strong>extinction
             chess</strong> — a variant with no checkmate, where you win by
             capturing every piece of any single type. No opening books, no
-            engines to learn from, no human games. Just self-play, 1,046
+            engines to learn from, no human games. Just self-play, 1,142
             iterations deep and still running.
           </p>
 
@@ -189,7 +189,7 @@
         <!-- ─── Playable demo ─── -->
         <h2 id="play">Play it</h2>
         <p>
-          This is the real engine — <code>az_iter1040</code>, the same
+          This is the real engine — <code>az_iter1140</code>, the same
           checkpoint described below, running on a GPU that's allocated to your
           game for as long as you're playing. It thinks while you think.
         </p>
@@ -331,10 +331,10 @@
         </p>
 
         <div class="case__stats">
-          <div class="stat"><span class="stat__num">1,046</span><span class="stat__label">training iterations completed</span></div>
-          <div class="stat"><span class="stat__num">~7M</span><span class="stat__label">network evaluations per iteration</span></div>
+          <div class="stat"><span class="stat__num">1,142</span><span class="stat__label">training iterations completed</span></div>
+          <div class="stat"><span class="stat__num">~10.7M</span><span class="stat__label">network evaluations per iteration</span></div>
           <div class="stat"><span class="stat__num">3.3 hrs</span><span class="stat__label">wall-clock per iteration</span></div>
-          <div class="stat"><span class="stat__num">110</span><span class="stat__label">checkpoints archived (9.5 GB)</span></div>
+          <div class="stat"><span class="stat__num">111</span><span class="stat__label">checkpoints archived (11 GB)</span></div>
         </div>
 
         <p>
@@ -383,10 +383,10 @@
         </p>
 
         <div class="case__stats">
-          <div class="stat"><span class="stat__num">90.0%</span><span class="stat__label">vs. the iteration-100 baseline</span></div>
+          <div class="stat"><span class="stat__num">96.0%</span><span class="stat__label">vs. the iteration-100 baseline</span></div>
           <div class="stat"><span class="stat__num">100%</span><span class="stat__label">vs. random play</span></div>
-          <div class="stat"><span class="stat__num">92%</span><span class="stat__label">on the tactical suite</span></div>
-          <div class="stat"><span class="stat__num">96%</span><span class="stat__label">win-taking conversion at high sims</span></div>
+          <div class="stat"><span class="stat__num">92.0%</span><span class="stat__label">on the tactical suite</span></div>
+          <div class="stat"><span class="stat__num">82.5%</span><span class="stat__label">vs. the previous checkpoint</span></div>
         </div>
 
         <h3>Reading a plateau correctly</h3>
