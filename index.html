@@ -142,31 +142,53 @@
         </div>
 
         <figure class="board-fig">
+          <!-- A LEGAL position: both sides still hold at least one of every
+               piece type, so nobody has lost yet. Square centres are
+               file*45+22.5; text baselines are (8-rank)*45+34. -->
           <svg viewBox="0 0 360 360" class="board" role="img"
-               aria-label="Board diagram: white bishop capturing black's last knight, ending the game by extinction">
+               aria-label="Board diagram: both sides are down to one of each piece type. White's bishop on g5 captures Black's last knight on f6, ending the game by extinction.">
             <defs>
+              <!-- offset so a1 (bottom-left) is dark, as on a real board -->
               <pattern id="sq" width="90" height="90" patternUnits="userSpaceOnUse">
                 <rect width="90" height="90" fill="var(--board-light)"/>
-                <rect width="45" height="45" fill="var(--board-dark)"/>
-                <rect x="45" y="45" width="45" height="45" fill="var(--board-dark)"/>
+                <rect x="0"  y="45" width="45" height="45" fill="var(--board-dark)"/>
+                <rect x="45" y="0"  width="45" height="45" fill="var(--board-dark)"/>
               </pattern>
             </defs>
             <rect width="360" height="360" fill="url(#sq)"/>
-            <!-- highlight the capture square -->
-            <rect x="180" y="135" width="45" height="45" fill="var(--accent-3)" opacity=".55"/>
-            <!-- pieces -->
-            <text x="202" y="170" class="pc pc--b">♞</text>
-            <text x="112" y="260" class="pc pc--w">♗</text>
-            <text x="292" y="80"  class="pc pc--b">♚</text>
-            <text x="67"  y="80"  class="pc pc--b">♜</text>
-            <!-- capture arrow -->
-            <line x1="130" y1="240" x2="192" y2="178" class="arrow"/>
-            <polygon points="202,168 190,172 198,180" class="arrowhead"/>
+
+            <!-- f6: the square being captured on -->
+            <rect x="225" y="90" width="45" height="45" fill="var(--accent-3)" opacity=".55"/>
+
+            <!-- White: Ra1 Qd1 Kg1 Ph2 Nf3 Pe4 Bg5 -->
+            <text x="22.5"  y="349" class="pc pc--w">♜</text>
+            <text x="157.5" y="349" class="pc pc--w">♛</text>
+            <text x="292.5" y="349" class="pc pc--w">♚</text>
+            <text x="337.5" y="304" class="pc pc--w">♟</text>
+            <text x="247.5" y="259" class="pc pc--w">♞</text>
+            <text x="202.5" y="214" class="pc pc--w">♟</text>
+            <text x="292.5" y="169" class="pc pc--w">♝</text>
+
+            <!-- Black: Pe5 Nf6 Ph7 Ra8 Qd8 Bf8 Kg8 -->
+            <text x="202.5" y="169" class="pc pc--b">♟</text>
+            <text x="247.5" y="124" class="pc pc--b">♞</text>
+            <text x="337.5" y="79"  class="pc pc--b">♟</text>
+            <text x="22.5"  y="34"  class="pc pc--b">♜</text>
+            <text x="157.5" y="34"  class="pc pc--b">♛</text>
+            <text x="247.5" y="34"  class="pc pc--b">♝</text>
+            <text x="292.5" y="34"  class="pc pc--b">♚</text>
+
+            <!-- Bg5 x f6 -->
+            <line x1="285" y1="150" x2="262" y2="127" class="arrow"/>
+            <polygon points="252,117 264,121 256,129" class="arrowhead"/>
           </svg>
           <figcaption>
-            Black has exactly one knight left. White plays <strong>Bxn</strong>
-            and the game ends on the spot — regardless of material, king safety,
-            or anything else on the board.
+            Both sides have traded down to a single knight, bishop, rook and
+            queen — the shape extinction-chess endgames tend to reach, because
+            every trade risks being the last of something. White plays
+            <strong>Bxf6</strong> and the game ends immediately: Black's
+            knights are extinct. It makes no difference that the bishop can be
+            recaptured, or that material is dead level.
           </figcaption>
         </figure>
 
@@ -406,6 +428,66 @@
           was playing <em>differently</em>, which depresses head-to-head scores
           against its own recent lineage. Reverting on the loss curve alone
           would have thrown away a real improvement.
+        </p>
+
+        <h3>The bug that was hiding inside the fix</h3>
+        <p>
+          Then, for about twenty iterations, the model started losing to itself.
+          Iteration 1,120 scored 42.5% against iteration 1,110. Iteration 1,130
+          managed 41.5% against iteration 1,090 and 42.5% against 1,070 — a
+          model consistently worse than versions of itself from forty iterations
+          earlier.
+        </p>
+        <p>
+          What made it hard to act on is that nothing looked broken. The
+          absolute markers held: still 100% against random play, still ~89%
+          against the iteration-100 baseline, tactical suite steady, win-taking
+          at 94%. Only the comparisons against its own recent lineage were
+          sliding, which is exactly the signature of harmless stylistic drift —
+          the thing the previous section says <em>not</em> to panic about. The
+          case for "wait and see" was genuinely strong right up until the
+          absolute markers began slipping too.
+        </p>
+        <p>
+          The cause turned out to be the drilling phase described above — the
+          fix for one weakness was quietly creating another. Drilling runs last
+          in each iteration, on curated near-terminal positions whose feature
+          distribution looks nothing like ordinary midgame play. It ran with the
+          network in training mode, so those final batches updated BatchNorm's
+          running mean and variance. At the default momentum of 0.1, the last
+          twenty batches carry <strong>1 − 0.9<sup>20</sup> ≈ 88%</strong> of
+          the exponential weight in those statistics at the moment the
+          checkpoint is saved.
+        </p>
+        <p>
+          So every checkpoint was being written with normalisation statistics
+          calibrated to drill positions, then loaded for the next round of
+          self-play where BatchNorm uses exactly those stored statistics to
+          normalise ordinary midgame positions. The network was being quietly
+          miscalibrated against the positions it actually plays, once per
+          iteration, compounding.
+        </p>
+        <p>
+          The fix is to put the BatchNorm layers in eval mode before drilling:
+          the running statistics freeze, while the learnable scale and bias
+          keep training normally. The next iteration's <code>model.train()</code>
+          restores them, so nothing needs unfreezing.
+        </p>
+        <p>
+          Iteration 1,140 was the first checkpoint fully trained under the fix,
+          and it produced the largest single-benchmark improvement in the
+          project's history: <strong>82.5% against iteration 1,130</strong>, and
+          25–30 point swings against every recent ancestor. The absolute markers
+          set new all-time peaks — 96.0% against the iteration-100 baseline,
+          beating a record that had stood since iteration 1,070.
+        </p>
+        <p>
+          One honest cost came with it. Win-taking — converting positions where
+          an extinction capture is available — dropped from 80% to 72% at low
+          simulation counts. The distorted statistics had been giving the model
+          artificially sharp recognition of immediate wins, and correcting them
+          took that edge away. The bug was doing something useful. It was just
+          doing far more damage everywhere else.
         </p>
 
         <!-- ─── Reflection ─── -->
