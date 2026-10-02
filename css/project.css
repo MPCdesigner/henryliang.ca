@@ -300,6 +300,15 @@
 
 /* ═══ Theory sections: formulas, parameter glossaries, worked tables ═══ */
 
+.formula__math {
+  overflow-x: auto;      /* long expressions scroll inside the block */
+  overflow-y: hidden;
+  padding: 0.2rem 0;
+}
+/* KaTeX sizes to its own em; nudge display maths to sit comfortably */
+.formula__math .katex-display { margin: 0.35rem 0; }
+.formula__math .katex { font-size: clamp(1rem, 0.92rem + 0.45vw, 1.2rem); }
+
 .formula {
   margin: 1.75rem 0;
   padding: 1.25rem 1.4rem;
@@ -308,28 +317,7 @@
   border-left: 3px solid var(--accent-2);
   border-radius: 0 var(--radius) var(--radius) 0;
 }
-.formula__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
-  line-height: 1.9;
-}
-.formula__lhs { font-weight: 600; }
-.formula__op { color: var(--text-faint); }
-.formula__where { color: var(--text-faint); font-size: 0.85em; margin-left: 0.3rem; }
 
-/* inline fraction without MathJax */
-.formula__frac {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  vertical-align: middle;
-  line-height: 1.25;
-}
-.formula__num { padding: 0 0.45rem; }
-.formula__den { padding: 0.1rem 0.45rem 0; border-top: 1px solid currentColor; }
 
 /* colour-coded symbols, reused in the surrounding prose so the reader can
    track a term from the formula into the explanation */
@@ -424,4 +412,46 @@
   border-radius: 5px;
   font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace;
   font-size: 0.88em;
+}
+
+/* ─── Hand-off to the playable page ─── */
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin: 2.5rem 0;
+  padding: 1.5rem 1.75rem;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 40%, var(--border));
+  border-radius: var(--radius-lg);
+}
+.cta__text { flex: 1 1 18rem; min-width: 0; }
+.cta h2 { margin: 0 0 0.5rem !important; font-size: var(--step-1) !important; }
+.cta p { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
+
+/* ─── The standalone play page ─── */
+.playpage { padding-block: clamp(2rem, 4vw, 3rem) clamp(3rem, 6vw, 4rem); }
+.playpage__title { font-size: var(--step-3); margin-bottom: 1rem; }
+.playpage__lede {
+  max-width: 62ch;
+  font-size: var(--step-1);
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.playpage__note {
+  max-width: 62ch;
+  font-size: var(--step--1);
+  color: var(--text-faint);
+  margin-bottom: 2rem;
+}
+.playpage__note a { color: var(--accent-2); text-decoration: underline; text-underline-offset: 3px; }
+
+/* the demo breaks out of prose width on the case study; here the page is
+   already full width, so cancel that */
+.playpage .play {
+  width: auto;
+  margin: 0;
+  transform: none;
 }

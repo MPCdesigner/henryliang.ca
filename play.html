@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Play the Extinction Chess Engine — Henry Liang</title>
+  <meta name="description" content="Play a neural network trained from scratch on extinction chess. A GPU is allocated to your game for as long as you are playing.">
+
+  <link rel="canonical" href="https://henryliang.ca/play.html">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://henryliang.ca/play.html">
+  <meta property="og:site_name" content="Henry Liang">
+  <meta property="og:title" content="Play the Extinction Chess Engine">
+  <meta property="og:description" content="Play a neural network trained from scratch on a chess variant with no published theory.">
+  <meta property="og:image" content="https://henryliang.ca/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/project.css">
+  <link rel="stylesheet" href="css/chess.css?v=12">
+
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.setAttribute('data-theme', saved || (prefersLight ? 'light' : 'dark'));
+      } catch (e) {}
+    })();
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="nav is-stuck" id="nav">
+    <div class="container nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-mark" aria-hidden="true"></span>
+        <span>Henry Liang</span>
+      </a>
+      <nav class="nav__links" id="nav-links" aria-label="Main">
+        <a href="index.html#variant">Variant</a>
+        <a href="index.html#problem">Problem</a>
+        <a href="index.html#architecture">Network</a>
+        <a href="index.html#search">Search</a>
+        <a href="index.html#training">Training</a>
+      </nav>
+      <div class="nav__actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch color theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z"/></svg>
+        </button>
+        <button class="icon-btn nav__burger" id="nav-toggle" type="button"
+                aria-label="Open menu" aria-expanded="false" aria-controls="nav-links">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container playpage">
+      <a class="back-link" href="index.html"><span aria-hidden="true">&larr;</span> Read how it works</a>
+
+      <h1 class="playpage__title">Play the engine</h1>
+      <p class="playpage__lede">
+        This is <code>az_iter1140</code>, an AlphaZero-style network trained
+        from scratch on <strong>extinction chess</strong> &mdash; no checkmate,
+        and you win by capturing every piece of any one type. A GPU is
+        allocated to your game for as long as you&rsquo;re playing, and the
+        engine searches while you think.
+      </p>
+      <p class="playpage__note">
+        New to the variant? <a href="index.html#variant">The rules differ in
+        one way that changes everything.</a>
+      </p>
+
+<div class="play" id="play-app">
+        <noscript>
+          <p class="play__msg">The board needs JavaScript enabled.</p>
+        </noscript>
+
+        <div class="play__bar">
+          <button class="btn btn--primary" id="pl-new" type="button">New game</button>
+          <!-- Labelled by clock rather than Easy/Standard/Strong: each tier
+               is a time control, and its sim ceiling is chosen to be
+               reachable within that clock (see TIERS in js/chess.js). -->
+          <label class="play__field">
+            <span>Time control</span>
+            <select id="pl-level">
+              <option value="800">3 + 2 · 800 sims</option>
+              <option value="2000" selected>5 + 3 · 2000 sims</option>
+              <option value="8000">10 + 10 · 8000 sims</option>
+            </select>
+          </label>
+          <label class="play__field">
+            <span>You play</span>
+            <select id="pl-color">
+              <option value="white" selected>White</option>
+              <option value="black">Black</option>
+            </select>
+          </label>
+          <button class="btn btn--ghost" id="pl-resign" type="button" disabled>Resign</button>
+        </div>
+
+        <div class="play__main">
+          <div class="play__boardwrap">
+            <div class="board" id="pl-board" role="grid" aria-label="Chess board"></div>
+            <div class="promo" id="pl-promo" hidden role="dialog" aria-label="Choose promotion piece">
+              <p>Promote to</p>
+              <div class="promo__opts" id="pl-promo-opts"></div>
+            </div>
+          </div>
+
+          <aside class="play__side">
+            <div class="clocks">
+              <div class="clock" id="pl-clock-top"><span class="clock__who">Engine</span><span class="clock__t">5:00</span></div>
+              <div class="clock" id="pl-clock-bot"><span class="clock__who">You</span><span class="clock__t">5:00</span></div>
+            </div>
+
+            <div class="status" id="pl-status">Press <strong>New game</strong> to wake the engine.</div>
+
+            <!-- Piece counts ARE the win condition, so they're the main readout -->
+            <div class="tracker">
+              <h4>Extinction tracker</h4>
+              <p class="tracker__hint">Lose every piece of any one type and you lose.</p>
+              <div class="tracker__grid" id="pl-tracker"></div>
+              <label class="toggle">
+                <input type="checkbox" id="pl-endang">
+                <span>Highlight endangered pieces</span>
+              </label>
+              <p class="toggle__key" id="pl-endang-key" hidden>
+                <span class="key key--mine"></span> yours
+                <span class="key key--foe"></span> engine's
+              </p>
+            </div>
+          </aside>
+
+          <section class="play__analysis" aria-label="Engine analysis">
+            <h4 class="panel__h">Engine analysis</h4>
+            <div class="analysis__body" id="pl-analysis-body">
+              <p class="analysis__empty">No move yet.</p>
+            </div>
+
+            <!-- Review is revealed only once the game is over — showing the
+                 engine's read of your position mid-game would be cheating. -->
+            <div class="review" id="pl-review" hidden>
+              <div class="review__bar">
+                <strong>Review</strong>
+                <div class="review__nav">
+                  <button type="button" id="pl-prev" aria-label="Previous move">←</button>
+                  <button type="button" id="pl-next" aria-label="Next move">→</button>
+                  <button type="button" id="pl-live" aria-label="Jump to final position">End</button>
+                </div>
+              </div>
+              <p class="review__hint">Click a move, or use ← → keys.</p>
+              <ol class="movelist" id="pl-movelist"></ol>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p>&copy; <span id="year">2026</span> Henry Liang</p>
+      <p class="footer__note"><a href="mailto:h74liang@uwaterloo.ca">h74liang@uwaterloo.ca</a></p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script src="js/chess.js?v=12"></script>
+</body>
+</html>

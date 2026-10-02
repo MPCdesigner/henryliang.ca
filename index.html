@@ -28,11 +28,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/project.css">
-  <!-- Bump ?v= whenever you edit chess.css/chess.js. python -m http.server
-       sends no Cache-Control, so browsers hold onto the old file and you end
-       up debugging code that isn't running. -->
-  <link rel="stylesheet" href="css/chess.css?v=12">
+  <link rel="stylesheet" href="css/project.css?v=2">
+
+  <!-- KaTeX for the maths. Chosen over MathJax: renders synchronously so
+       there's no layout shift, and it's a fraction of the weight. Pinned to an
+       exact version. If the CDN is ever unreachable the \( \) source stays
+       readable rather than breaking the page. -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {
+            delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '\\(', right: '\\)', display: false}
+            ],
+            throwOnError: false
+          });"></script>
 
   <script>
     (function () {
@@ -233,17 +244,14 @@
         </p>
 
         <div class="formula">
-          <div class="formula__line">
-            <span class="formula__lhs">ℒ</span> =
-            <span class="tok tok--p">−∑<sub>a</sub> π(a) log p(a)</span>
-            <span class="formula__op">+</span>
-            <span class="tok tok--v">(v − z)²</span>
+          <div class="formula__math">
+            $$\mathcal{L} \;=\; \underbrace{-\sum_{a}\textcolor{#7c5cff}{\pi(a)}\,\log p(a)}_{\text{policy}} \;+\; \underbrace{\bigl(v-\textcolor{#ff4d7d}{z}\bigr)^{2}}_{\text{value}}$$
           </div>
           <dl class="params">
-            <div><dt class="tok tok--p">π(a)</dt><dd>the share of MCTS simulations that went into move <em>a</em> — the search's own conclusion after 800 simulations</dd></div>
-            <div><dt>p(a)</dt><dd>the network's raw policy for <em>a</em>, before any search</dd></div>
-            <div><dt class="tok tok--v">z</dt><dd>how the game actually ended, from the perspective of whoever was to move</dd></div>
-            <div><dt>v</dt><dd>the network's value estimate for that position</dd></div>
+            <div><dt class="tok tok--p">\(\pi(a)\)</dt><dd>the share of MCTS simulations that went into move <em>a</em> — the search's own conclusion after 800 simulations</dd></div>
+            <div><dt>\(p(a)\)</dt><dd>the network's raw policy for <em>a</em>, before any search</dd></div>
+            <div><dt class="tok tok--v">\(z\)</dt><dd>how the game actually ended, from the perspective of whoever was to move</dd></div>
+            <div><dt>\(v\)</dt><dd>the network's value estimate for that position</dd></div>
           </dl>
         </div>
 
@@ -280,97 +288,18 @@
         </p>
 
         <!-- ─── Playable demo ─── -->
-        <h2 id="play">Play it</h2>
-        <p>
-          This is the real engine — <code>az_iter1140</code>, the same
-          checkpoint described below, running on a GPU that's allocated to your
-          game for as long as you're playing. It thinks while you think.
-        </p>
-
-        <div class="play" id="play-app">
-          <noscript>
-            <p class="play__msg">The board needs JavaScript enabled.</p>
-          </noscript>
-
-          <div class="play__bar">
-            <button class="btn btn--primary" id="pl-new" type="button">New game</button>
-            <!-- Labelled by clock rather than Easy/Standard/Strong: each tier
-                 is a time control, and its sim ceiling is chosen to be
-                 reachable within that clock (see TIERS in js/chess.js). -->
-            <label class="play__field">
-              <span>Time control</span>
-              <select id="pl-level">
-                <option value="800">3 + 2 · 800 sims</option>
-                <option value="2000" selected>5 + 3 · 2000 sims</option>
-                <option value="8000">10 + 10 · 8000 sims</option>
-              </select>
-            </label>
-            <label class="play__field">
-              <span>You play</span>
-              <select id="pl-color">
-                <option value="white" selected>White</option>
-                <option value="black">Black</option>
-              </select>
-            </label>
-            <button class="btn btn--ghost" id="pl-resign" type="button" disabled>Resign</button>
+        <!-- The board lives on its own page now; this is the hand-off. -->
+        <aside class="cta">
+          <div class="cta__text">
+            <h2 id="play">Play it</h2>
+            <p>
+              The engine described here is live and playable in your browser.
+              It&rsquo;s <code>az_iter1140</code> on a GPU allocated to your
+              game, searching while you think.
+            </p>
           </div>
-
-          <div class="play__main">
-            <div class="play__boardwrap">
-              <div class="board" id="pl-board" role="grid" aria-label="Chess board"></div>
-              <div class="promo" id="pl-promo" hidden role="dialog" aria-label="Choose promotion piece">
-                <p>Promote to</p>
-                <div class="promo__opts" id="pl-promo-opts"></div>
-              </div>
-            </div>
-
-            <aside class="play__side">
-              <div class="clocks">
-                <div class="clock" id="pl-clock-top"><span class="clock__who">Engine</span><span class="clock__t">5:00</span></div>
-                <div class="clock" id="pl-clock-bot"><span class="clock__who">You</span><span class="clock__t">5:00</span></div>
-              </div>
-
-              <div class="status" id="pl-status">Press <strong>New game</strong> to wake the engine.</div>
-
-              <!-- Piece counts ARE the win condition, so they're the main readout -->
-              <div class="tracker">
-                <h4>Extinction tracker</h4>
-                <p class="tracker__hint">Lose every piece of any one type and you lose.</p>
-                <div class="tracker__grid" id="pl-tracker"></div>
-                <label class="toggle">
-                  <input type="checkbox" id="pl-endang">
-                  <span>Highlight endangered pieces</span>
-                </label>
-                <p class="toggle__key" id="pl-endang-key" hidden>
-                  <span class="key key--mine"></span> yours
-                  <span class="key key--foe"></span> engine's
-                </p>
-              </div>
-            </aside>
-
-            <section class="play__analysis" aria-label="Engine analysis">
-              <h4 class="panel__h">Engine analysis</h4>
-              <div class="analysis__body" id="pl-analysis-body">
-                <p class="analysis__empty">No move yet.</p>
-              </div>
-
-              <!-- Review is revealed only once the game is over — showing the
-                   engine's read of your position mid-game would be cheating. -->
-              <div class="review" id="pl-review" hidden>
-                <div class="review__bar">
-                  <strong>Review</strong>
-                  <div class="review__nav">
-                    <button type="button" id="pl-prev" aria-label="Previous move">←</button>
-                    <button type="button" id="pl-next" aria-label="Next move">→</button>
-                    <button type="button" id="pl-live" aria-label="Jump to final position">End</button>
-                  </div>
-                </div>
-                <p class="review__hint">Click a move, or use ← → keys.</p>
-                <ol class="movelist" id="pl-movelist"></ol>
-              </div>
-            </section>
-          </div>
-        </div>
+          <a class="btn btn--primary btn--lg" href="play.html">Play the engine</a>
+        </aside>
 
         <!-- ─── Architecture ─── -->
         <h2 id="architecture">Architecture</h2>
@@ -503,22 +432,15 @@
         </p>
 
         <div class="formula">
-          <div class="formula__line">
-            <span class="formula__lhs">score(a)</span> =
-            <span class="tok tok--q">Q(a)</span>
-            <span class="formula__op">+</span>
-            <span class="tok tok--c">c<sub>puct</sub></span>
-            <span class="formula__op">·</span>
-            <span class="tok tok--p">P(a)</span>
-            <span class="formula__op">·</span>
-            <span class="formula__frac"><span class="formula__num">√N(s)</span><span class="formula__den">1 + N(a)</span></span>
+          <div class="formula__math">
+            $$\text{score}(a)\;=\;\textcolor{#22c55e}{Q(a)}\;+\;\textcolor{#c04bff}{c_{\text{puct}}}\cdot\textcolor{#7c5cff}{P(a)}\cdot\frac{\sqrt{N(s)}}{1+N(a)}$$
           </div>
           <dl class="params">
-            <div><dt class="tok tok--q">Q(a)</dt><dd>mean value of every simulation that has gone through <em>a</em>, read from the moving side's perspective. Exploitation.</dd></div>
-            <div><dt class="tok tok--p">P(a)</dt><dd>the policy head's prior for <em>a</em>. What the network thinks before any lookahead.</dd></div>
-            <div><dt>N(a)</dt><dd>visits to <em>a</em> so far</dd></div>
-            <div><dt>N(s)</dt><dd>visits to the parent position</dd></div>
-            <div><dt class="tok tok--c">c<sub>puct</sub></dt><dd>exploration weight. 2.5 during training; 3.5 on the deployed engine, because this network is still overconfident and benefits from being pushed to look wider.</dd></div>
+            <div><dt class="tok tok--q">\(Q(a)\)</dt><dd>mean value of every simulation that has gone through <em>a</em>, read from the moving side's perspective. Exploitation.</dd></div>
+            <div><dt class="tok tok--p">\(P(a)\)</dt><dd>the policy head's prior for <em>a</em>. What the network thinks before any lookahead.</dd></div>
+            <div><dt>\(N(a)\)</dt><dd>visits to <em>a</em> so far</dd></div>
+            <div><dt>\(N(s)\)</dt><dd>visits to the parent position</dd></div>
+            <div><dt class="tok tok--c">\(c_{\text{puct}}\)</dt><dd>exploration weight. 2.5 during training; 3.5 on the deployed engine, because this network is still overconfident and benefits from being pushed to look wider.</dd></div>
           </dl>
         </div>
 
@@ -597,18 +519,12 @@
         </p>
 
         <div class="formula">
-          <div class="formula__line">
-            <span class="formula__lhs">P′(a)</span> =
-            (1 − <span class="tok tok--c">ε</span>) ·
-            <span class="tok tok--p">P(a)</span>
-            <span class="formula__op">+</span>
-            <span class="tok tok--c">ε</span> ·
-            <span class="tok">η<sub>a</sub></span>,
-            <span class="formula__where">η ~ Dir(<span class="tok tok--c">α</span>)</span>
+          <div class="formula__math">
+            $$P'(a)\;=\;(1-\textcolor{#c04bff}{\varepsilon})\,\textcolor{#7c5cff}{P(a)}\;+\;\textcolor{#c04bff}{\varepsilon}\,\eta_{a},\qquad \eta\sim\mathrm{Dir}(\textcolor{#c04bff}{\alpha})$$
           </div>
           <dl class="params">
-            <div><dt class="tok tok--c">ε</dt><dd>how much noise to mix in. 0.75 in training, 0.3 on the deployed engine.</dd></div>
-            <div><dt class="tok tok--c">α</dt><dd>Dirichlet concentration. Higher spreads the noise more evenly across moves; 2.0 in training, raised twice after the policy head was caught collapsing rare promotion planes to roughly zero probability.</dd></div>
+            <div><dt class="tok tok--c">\(\varepsilon\)</dt><dd>how much noise to mix in. 0.75 in training, 0.3 on the deployed engine.</dd></div>
+            <div><dt class="tok tok--c">\(\alpha\)</dt><dd>Dirichlet concentration. Higher spreads the noise more evenly across moves; 2.0 in training, raised twice after the policy head was caught collapsing rare promotion planes to roughly zero probability.</dd></div>
           </dl>
         </div>
 
@@ -799,7 +715,7 @@
         <aside class="callout">
           <h3>Want to try it?</h3>
           <p>
-            The engine is <a href="#play">playable above</a> — a GPU spins up
+            The engine is <a href="play.html">playable here</a> — a GPU spins up
             for your game and shuts down when you're done.
           </p>
         </aside>
@@ -810,7 +726,7 @@
       <nav class="case__next" aria-label="Play the engine">
         <div class="container">
           <p class="section__label">Try it</p>
-          <a class="case__next-link" href="#play">
+          <a class="case__next-link" href="play.html">
             <span>Play the engine</span>
             <span aria-hidden="true">→</span>
           </a>
@@ -827,6 +743,5 @@
   </footer>
 
   <script src="js/main.js"></script>
-  <script src="js/chess.js?v=12"></script>
 </body>
 </html>
