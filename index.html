@@ -32,7 +32,7 @@
   <!-- Bump ?v= whenever you edit chess.css/chess.js. python -m http.server
        sends no Cache-Control, so browsers hold onto the old file and you end
        up debugging code that isn't running. -->
-  <link rel="stylesheet" href="css/chess.css?v=11">
+  <link rel="stylesheet" href="css/chess.css?v=12">
 
   <script>
     (function () {
@@ -59,9 +59,11 @@
         <span>Henry Liang</span>
       </a>
       <nav class="nav__links" id="nav-links" aria-label="Main">
-        <a href="#variant">The variant</a>
+        <a href="#variant">Variant</a>
+        <a href="#problem">Problem</a>
         <a href="#play">Play</a>
-        <a href="#architecture">Architecture</a>
+        <a href="#architecture">Network</a>
+        <a href="#search">Search</a>
         <a href="#training">Training</a>
       </nav>
       <div class="nav__actions">
@@ -207,6 +209,76 @@
           </p>
         </blockquote>
 
+        <!-- ─── The learning problem ─── -->
+        <h2 id="problem">The problem: nothing to learn from</h2>
+        <p>
+          Training a chess engine normally starts with data. Millions of human
+          games, or positions labelled by an engine that already plays well, or
+          at minimum a hand-written evaluation function encoding what centuries
+          of theory established — that a rook is worth five pawns, that doubled
+          pawns are weak.
+        </p>
+        <p>
+          Extinction chess has none of that. No corpus, no reference engine, no
+          accepted evaluation. A rook might be worth five pawns or it might be a
+          liability, and nobody has worked out which. So before you can train
+          anything, you have to answer an awkward question:
+          <strong>what do you regress against?</strong>
+        </p>
+
+        <h3>Bootstrapping from your own search</h3>
+        <p>
+          The answer is to make the network predict the output of a search that
+          used the network. Two targets, one per head:
+        </p>
+
+        <div class="formula">
+          <div class="formula__line">
+            <span class="formula__lhs">ℒ</span> =
+            <span class="tok tok--p">−∑<sub>a</sub> π(a) log p(a)</span>
+            <span class="formula__op">+</span>
+            <span class="tok tok--v">(v − z)²</span>
+          </div>
+          <dl class="params">
+            <div><dt class="tok tok--p">π(a)</dt><dd>the share of MCTS simulations that went into move <em>a</em> — the search's own conclusion after 800 simulations</dd></div>
+            <div><dt>p(a)</dt><dd>the network's raw policy for <em>a</em>, before any search</dd></div>
+            <div><dt class="tok tok--v">z</dt><dd>how the game actually ended, from the perspective of whoever was to move</dd></div>
+            <div><dt>v</dt><dd>the network's value estimate for that position</dd></div>
+          </dl>
+        </div>
+
+        <p>
+          The first term is the strange one. <strong>π is not ground truth — it
+          is the same network's opinion, run through 800 simulations of
+          lookahead.</strong> The network is being trained to agree with a
+          slightly better-informed version of itself.
+        </p>
+        <p>
+          That only works because search genuinely adds information. A single
+          forward pass is one guess; eight hundred simulations actually play
+          moves out, reach positions the network evaluates separately, and feed
+          those results back. The resulting distribution is measurably stronger
+          than the raw policy that seeded it. Distilling it back into the weights
+          makes the next forward pass better, which makes the next search better
+          still. <strong>The gap between the network and its own search is the
+          entire training signal.</strong>
+        </p>
+        <p>
+          The value target looks more solid — somebody really did win. But those
+          games were played by this same network against itself, so
+          <em>z</em> only ever answers "what tends to happen when this model
+          plays this model." Nothing in the loop is anchored to an outside
+          standard.
+        </p>
+        <p>
+          That is the structural risk, and it is not hypothetical. If the model
+          develops a blind spot, self-play will not reveal it: both players share
+          it. Every strength measurement in this project is relative — against
+          older checkpoints, against random play, against a fixed puzzle set —
+          which detects <em>regression</em> reliably and a shared blind spot not
+          at all.
+        </p>
+
         <!-- ─── Playable demo ─── -->
         <h2 id="play">Play it</h2>
         <p>
@@ -326,6 +398,36 @@
           capacity on strategy instead of arithmetic.
         </p>
 
+        <h3>What comes out of it</h3>
+        <p>
+          The tower is ordinary. What matters is the two heads, because they are
+          what the search consumes — and neither one decides a move on its own.
+        </p>
+        <p>
+          The <strong>policy head</strong> emits 4,864 logits, which is 76 move
+          planes × 64 origin squares. The plane encodes <em>what kind</em> of
+          move it is — a queen-like ray in one of eight directions, a knight
+          jump, or a promotion — and the square says where it starts. Extinction
+          chess needs more planes than standard chess does, because promoting to
+          a king is legal and has to be representable. Masked to the legal moves
+          and softmaxed, this becomes <span class="tok">P(a)</span>, a prior
+          probability over moves.
+        </p>
+        <p>
+          The <strong>value head</strong> collapses the same tower output to a
+          single number through a tanh, so <span class="tok">v ∈ [−1, 1]</span>,
+          read from the perspective of whoever is to move. +1 means the player
+          about to move is winning.
+        </p>
+        <p>
+          The distinction that matters: <strong>the policy is a prior, not a
+          decision, and the value replaces playing the game out.</strong>
+          Classical MCTS estimated a position by playing random moves to the end
+          thousands of times. Here a single forward pass substitutes for all of
+          that, and the policy tells the search which branches deserve attention
+          first. The search then overrules both — routinely.
+        </p>
+
         <h3>Terminal-position drilling</h3>
         <p>
           Pure self-play produced a specific, persistent weakness: the engine
@@ -341,6 +443,189 @@
           network on them at a reduced learning rate, with a second, harder pool
           trained more gently still. It's a targeted correction for a failure
           mode that self-play alone doesn't sample often enough to fix.
+        </p>
+
+        <!-- ─── Search ─── -->
+        <h2 id="search">Inside the search</h2>
+        <p>
+          One "simulation" is four steps: walk down the tree to a position
+          nobody has evaluated yet, expand it, evaluate it with one forward
+          pass, and push that result back up to the root. Repeat 800 times and
+          the distribution of visits across the root's children is the move the
+          engine plays — and, during training, the target π that the policy head
+          learns from.
+        </p>
+
+        <figure class="board-fig">
+          <svg viewBox="0 0 560 230" class="diagram" role="img"
+               aria-label="One MCTS simulation: select down the tree by PUCT score, expand the leaf, evaluate it with the network, then back the value up to the root.">
+            <!-- edges -->
+            <g class="dg-edge">
+              <line x1="120" y1="48"  x2="64"  y2="110"/>
+              <line x1="120" y1="48"  x2="176" y2="110"/>
+              <line x1="176" y1="128" x2="134" y2="186"/>
+              <line x1="176" y1="128" x2="218" y2="186"/>
+            </g>
+            <g class="dg-edge dg-edge--hot">
+              <line x1="120" y1="48" x2="176" y2="110"/>
+              <line x1="176" y1="128" x2="218" y2="186"/>
+            </g>
+            <!-- nodes -->
+            <circle cx="120" cy="36"  r="17" class="dg-node dg-node--root"/>
+            <circle cx="64"  cy="119" r="15" class="dg-node"/>
+            <circle cx="176" cy="119" r="15" class="dg-node dg-node--hot"/>
+            <circle cx="134" cy="196" r="15" class="dg-node"/>
+            <circle cx="218" cy="196" r="15" class="dg-node dg-node--leaf"/>
+            <text x="120" y="41"  class="dg-lbl">root</text>
+            <text x="218" y="201" class="dg-lbl">new</text>
+            <!-- phases -->
+            <text x="300" y="30"  class="dg-step"><tspan class="dg-num">1</tspan> Select</text>
+            <text x="300" y="48"  class="dg-sub">follow the highest PUCT score at every level</text>
+            <text x="300" y="78"  class="dg-step"><tspan class="dg-num">2</tspan> Expand</text>
+            <text x="300" y="96"  class="dg-sub">create children for every legal move</text>
+            <text x="300" y="126" class="dg-step"><tspan class="dg-num">3</tspan> Evaluate</text>
+            <text x="300" y="144" class="dg-sub">one forward pass → priors P(a) and value v</text>
+            <text x="300" y="174" class="dg-step"><tspan class="dg-num">4</tspan> Back up</text>
+            <text x="300" y="192" class="dg-sub">add v to every ancestor, increment their counts</text>
+            <!-- backup arrow -->
+            <path d="M236,186 C280,150 268,80 140,44" class="dg-backarrow"/>
+          </svg>
+          <figcaption>
+            One simulation. Steps 1–2 are pure bookkeeping; the only neural
+            network call is step 3, which is why the search is bounded by
+            forward passes rather than by tree work.
+          </figcaption>
+        </figure>
+
+        <h3>Choosing which branch to walk down</h3>
+        <p>
+          Every step of the descent picks the child with the highest PUCT score:
+        </p>
+
+        <div class="formula">
+          <div class="formula__line">
+            <span class="formula__lhs">score(a)</span> =
+            <span class="tok tok--q">Q(a)</span>
+            <span class="formula__op">+</span>
+            <span class="tok tok--c">c<sub>puct</sub></span>
+            <span class="formula__op">·</span>
+            <span class="tok tok--p">P(a)</span>
+            <span class="formula__op">·</span>
+            <span class="formula__frac"><span class="formula__num">√N(s)</span><span class="formula__den">1 + N(a)</span></span>
+          </div>
+          <dl class="params">
+            <div><dt class="tok tok--q">Q(a)</dt><dd>mean value of every simulation that has gone through <em>a</em>, read from the moving side's perspective. Exploitation.</dd></div>
+            <div><dt class="tok tok--p">P(a)</dt><dd>the policy head's prior for <em>a</em>. What the network thinks before any lookahead.</dd></div>
+            <div><dt>N(a)</dt><dd>visits to <em>a</em> so far</dd></div>
+            <div><dt>N(s)</dt><dd>visits to the parent position</dd></div>
+            <div><dt class="tok tok--c">c<sub>puct</sub></dt><dd>exploration weight. 2.5 during training; 3.5 on the deployed engine, because this network is still overconfident and benefits from being pushed to look wider.</dd></div>
+          </dl>
+        </div>
+
+        <p>
+          The second term is what makes this work. It starts large for
+          high-prior moves and <strong>decays as that move accumulates
+          visits</strong> — the <span class="tok">1 + N(a)</span> denominator
+          means the hundredth visit to a move is worth far less attention than
+          the first. Meanwhile <span class="tok">√N(s)</span> grows as the whole
+          search deepens, so exploration never dies off entirely. A move the
+          network dismissed can still get examined, just later.
+        </p>
+        <p>
+          So the search begins by trusting the network and ends by trusting the
+          results. Early simulations follow the policy almost exactly; after a
+          few hundred, <span class="tok tok--q">Q</span> dominates and the
+          visit distribution reflects what actually happened when the moves were
+          played out.
+        </p>
+
+        <h3>Two selections, worked through</h3>
+        <p>
+          Three legal moves, priors 0.60 / 0.30 / 0.10, with
+          <span class="tok tok--c">c<sub>puct</sub></span> = 2.5. After ten
+          simulations the root has learned something the policy did not know:
+        </p>
+
+        <div class="steptable">
+          <table>
+            <caption>After 10 simulations — √N(s) = 3.162</caption>
+            <thead><tr><th>move</th><th>P</th><th>N</th><th>Q</th><th>exploration term</th><th>score</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>0.60</td><td>7</td><td>+0.100</td><td>0.593</td><td>0.693</td></tr>
+              <tr class="is-pick"><td>B</td><td>0.30</td><td>2</td><td>+0.350</td><td>0.791</td><td><strong>1.141</strong></td></tr>
+              <tr><td>C</td><td>0.10</td><td>0</td><td>0.000</td><td>0.791</td><td>0.791</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>B wins, despite half A's prior.</strong> A was the network's
+          favourite and got explored first, but seven visits shrank its
+          exploration term and the results came back mediocre. B looks better
+          where it has been tried. C, never tried at all, keeps its full
+          exploration term and is already ahead of A.
+        </p>
+        <p>
+          Simulation 11 goes to B and the leaf evaluates at −0.50, dragging B's
+          average down:
+        </p>
+
+        <div class="steptable">
+          <table>
+            <caption>After 11 simulations — √N(s) = 3.317</caption>
+            <thead><tr><th>move</th><th>P</th><th>N</th><th>Q</th><th>exploration term</th><th>score</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>0.60</td><td>7</td><td>+0.100</td><td>0.622</td><td>0.722</td></tr>
+              <tr><td>B</td><td>0.30</td><td>3</td><td>+0.067</td><td>0.622</td><td>0.689</td></tr>
+              <tr class="is-pick"><td>C</td><td>0.10</td><td>0</td><td>0.000</td><td>0.829</td><td><strong>0.829</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          One bad result is enough to drop B below A, and now C finally gets its
+          turn. That is the self-correcting part: a move only stays favoured
+          while the simulations keep agreeing, and a move the network rated at
+          10% still gets examined rather than being written off.
+        </p>
+
+        <h3>Noise, and where it goes</h3>
+        <p>
+          Trained on its own search output, a network can quietly stop
+          considering moves entirely — the prior collapses toward zero, the
+          exploration term never lifts them, they never get visited, and nothing
+          generates evidence to the contrary. During self-play the priors at the
+          <em>root only</em> are perturbed before searching:
+        </p>
+
+        <div class="formula">
+          <div class="formula__line">
+            <span class="formula__lhs">P′(a)</span> =
+            (1 − <span class="tok tok--c">ε</span>) ·
+            <span class="tok tok--p">P(a)</span>
+            <span class="formula__op">+</span>
+            <span class="tok tok--c">ε</span> ·
+            <span class="tok">η<sub>a</sub></span>,
+            <span class="formula__where">η ~ Dir(<span class="tok tok--c">α</span>)</span>
+          </div>
+          <dl class="params">
+            <div><dt class="tok tok--c">ε</dt><dd>how much noise to mix in. 0.75 in training, 0.3 on the deployed engine.</dd></div>
+            <div><dt class="tok tok--c">α</dt><dd>Dirichlet concentration. Higher spreads the noise more evenly across moves; 2.0 in training, raised twice after the policy head was caught collapsing rare promotion planes to roughly zero probability.</dd></div>
+          </dl>
+        </div>
+
+        <p>
+          Root-only is deliberate. Noise at the root changes which lines get
+          explored; noise deeper in the tree would corrupt the evaluations those
+          lines produce. And it is applied <em>once</em> per root — a detail
+          that turned out to matter more than it sounds, because the search runs
+          in repeated chunks while pondering, and re-drawing the noise on every
+          chunk quietly flattened the priors toward uniform until it was caught.
+        </p>
+        <p>
+          A last detail that looks like a mistake and isn't: the engine plays the
+          <strong>most-visited</strong> move, not the highest-valued one. A
+          single simulation returning +0.9 is noise; a move that attracted three
+          hundred visits earned them by repeatedly surviving. Visit count is the
+          more robust statistic, and it is the one that becomes π.
         </p>
 
         <!-- ─── Training ─── -->
@@ -542,6 +827,6 @@
   </footer>
 
   <script src="js/main.js"></script>
-  <script src="js/chess.js?v=11"></script>
+  <script src="js/chess.js?v=12"></script>
 </body>
 </html>

@@ -298,6 +298,124 @@
 }
 .callout p { color: var(--text-muted); margin: 0; }
 
+/* ═══ Theory sections: formulas, parameter glossaries, worked tables ═══ */
+
+.formula {
+  margin: 1.75rem 0;
+  padding: 1.25rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.formula__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+  line-height: 1.9;
+}
+.formula__lhs { font-weight: 600; }
+.formula__op { color: var(--text-faint); }
+.formula__where { color: var(--text-faint); font-size: 0.85em; margin-left: 0.3rem; }
+
+/* inline fraction without MathJax */
+.formula__frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1.25;
+}
+.formula__num { padding: 0 0.45rem; }
+.formula__den { padding: 0.1rem 0.45rem 0; border-top: 1px solid currentColor; }
+
+/* colour-coded symbols, reused in the surrounding prose so the reader can
+   track a term from the formula into the explanation */
+.tok {
+  font-family: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+.tok--q { color: #22c55e; }
+.tok--p { color: var(--accent-1); }
+.tok--v { color: var(--accent-3); }
+.tok--c { color: var(--accent-2); }
+
+.params {
+  margin: 1.1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: var(--step--1);
+}
+.params > div {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.2rem 0.9rem;
+  padding: 0.3rem 0;
+}
+.params dt { font-weight: 600; }
+.params dd { margin: 0; color: var(--text-muted); }
+
+.steptable { margin: 1.5rem 0; overflow-x: auto; }
+.steptable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+.steptable caption {
+  text-align: left;
+  padding-bottom: 0.5rem;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.steptable th {
+  text-align: right;
+  padding: 0.4rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.steptable th:first-child, .steptable td:first-child { text-align: left; }
+.steptable td {
+  text-align: right;
+  padding: 0.4rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.steptable tr.is-pick td {
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+  color: var(--text);
+}
+
+/* ─── Simulation diagram ─── */
+.diagram { display: block; width: 100%; max-width: 560px; margin-inline: auto; }
+.dg-edge line { stroke: var(--border); stroke-width: 2; }
+.dg-edge--hot line { stroke: var(--accent-2); stroke-width: 3; }
+.dg-node { fill: var(--surface-2); stroke: var(--border); stroke-width: 2; }
+.dg-node--root { fill: var(--surface-2); stroke: var(--accent-2); }
+.dg-node--hot { stroke: var(--accent-2); }
+.dg-node--leaf { fill: color-mix(in srgb, var(--accent-3) 30%, var(--surface-2)); stroke: var(--accent-3); }
+.dg-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+}
+.dg-step { font-family: var(--font-display); font-size: 14px; font-weight: 600; fill: var(--text); }
+.dg-num { fill: var(--accent-2); }
+.dg-sub { font-family: var(--font-body); font-size: 11.5px; fill: var(--text-muted); }
+.dg-backarrow { fill: none; stroke: var(--accent-1); stroke-width: 2; stroke-dasharray: 5 4; }
+
+@media (max-width: 560px) {
+  .params > div { grid-template-columns: 1fr; }
+  .dg-step, .dg-sub { font-size: 10px; }
+}
+
 /* ─── Inline code ─── */
 .case__body code {
   padding: 0.15em 0.4em;
