@@ -24,7 +24,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/project.css">
-  <link rel="stylesheet" href="css/chess.css?v=12">
+  <link rel="stylesheet" href="css/chess.css?v=13">
 
   <script>
     (function () {
@@ -72,11 +72,13 @@
 
       <h1 class="playpage__title">Play the engine</h1>
       <p class="playpage__lede">
-        This is <code>az_iter1140</code>, an AlphaZero-style network trained
-        from scratch on <strong>extinction chess</strong> &mdash; no checkmate,
-        and you win by capturing every piece of any one type. A GPU is
-        allocated to your game for as long as you&rsquo;re playing, and the
-        engine searches while you think.
+        This is an AlphaZero-style network trained from scratch on
+        <strong>extinction chess</strong> &mdash; no checkmate, and you win by
+        capturing every piece of any one type. A GPU is allocated to your game
+        for as long as you&rsquo;re playing, and the engine searches while you
+        think. You can pick which <strong>training checkpoint</strong> to face:
+        <code>az_iter1200</code> is the current strongest, and the two earlier
+        ones were each the deployed engine in their turn.
       </p>
       <p class="playpage__note">
         New to the variant? <a href="/#variant">The rules differ in
@@ -90,6 +92,16 @@
 
         <div class="play__bar">
           <button class="btn btn--primary" id="pl-new" type="button">New game</button>
+          <!-- Opponent checkpoint. Values are LABELS matched against the
+               MODELS allowlist in web_play.py, never filenames or paths. -->
+          <label class="play__field">
+            <span>Opponent</span>
+            <select id="pl-model">
+              <option value="1200" selected>iter 1200 &middot; strongest</option>
+              <option value="1140">iter 1140 &middot; previous</option>
+              <option value="1040">iter 1040 &middot; older</option>
+            </select>
+          </label>
           <!-- Labelled by clock rather than Easy/Standard/Strong: each tier
                is a time control, and its sim ceiling is chosen to be
                reachable within that clock (see TIERS in js/chess.js). -->
@@ -178,6 +190,6 @@
   </footer>
 
   <script src="js/main.js"></script>
-  <script src="js/chess.js?v=12"></script>
+  <script src="js/chess.js?v=13"></script>
 </body>
 </html>

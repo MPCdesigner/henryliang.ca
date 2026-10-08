@@ -30,6 +30,7 @@
   var newBtn = document.getElementById('pl-new');
   var resignBtn = document.getElementById('pl-resign');
   var levelSel = document.getElementById('pl-level');
+  var modelSel = document.getElementById('pl-model');
   var colorSel = document.getElementById('pl-color');
   var statusEl = document.getElementById('pl-status');
   var trackerEl = document.getElementById('pl-tracker');
@@ -320,6 +321,7 @@
     newBtn.disabled = true;
     levelSel.disabled = true;
     colorSel.disabled = true;
+    modelSel.disabled = true;
     setStatus('Waking the engine… first game of the day takes ~15s while a GPU spins up.');
 
     if (ws) { try { ws.close(); } catch (e) {} }
@@ -334,7 +336,8 @@
         human_color: humanColor,
         base: tier.base,
         increment: tier.inc,
-        sim_ceiling: ceiling
+        sim_ceiling: ceiling,
+        model: modelSel.value
       });
       resignBtn.disabled = false;
     };
@@ -361,6 +364,7 @@
       newBtn.disabled = false;
       levelSel.disabled = false;
       colorSel.disabled = false;
+      modelSel.disabled = false;
       resignBtn.disabled = true;
       if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
       if (state && !state.game_over) {
@@ -466,6 +470,7 @@
         newBtn.disabled = false;
         levelSel.disabled = false;
         colorSel.disabled = false;
+        modelSel.disabled = false;
         if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
         // Release the GPU. The socket is the container's lifetime, so leaving
         // a finished game connected bills for a container nobody is using.
