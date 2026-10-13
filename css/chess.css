@@ -90,6 +90,22 @@
   touch-action: manipulation;
 }
 
+/* The 8 rows divide the CONTENT box — width minus the two 1px borders — so a
+   plain width:100% almost always leaves a fractional row height. Fractional
+   rows snap unevenly to device pixels: at 1440px the board is 411.86 wide,
+   rows want 51.23, and they paint [51,51,51,52,51,51,51,52]. Two ranks come
+   out 1px taller, which reads as rows compressing vertically. Measured uneven
+   at 34 of 39 width x dpr combinations before this rule, 18 after.
+   Trimming the width so the CONTENT box is a whole multiple of 8 fixes the
+   geometry. The +2px adds the borders back, since width is border-box here.
+   Residual unevenness is at fractional display scaling (125%/150%), where an
+   integral CSS row still lands on a fractional device pixel (51 x 1.25 =
+   63.75) — not fixable in CSS. See site_briefing.txt §7 for the measurements
+   and for the option that would remove it visually. */
+@supports (width: round(down, 100%, 8px)) {
+  .board { width: calc(round(down, 100% - 2px, 8px) + 2px); }
+}
+
 .sq {
   position: relative;
   display: grid;
