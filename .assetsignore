@@ -1,5 +1,9 @@
 # Files in the repo that should NOT be served as part of the site.
 # Workers Static Assets reads this from the assets directory.
+#
+# .git: Cloudflare deploys from a fresh clone, and without this line the
+# clone's .git folder was downloadable at https://henryliang.ca/.git/
+.git
 wrangler.jsonc
 .assetsignore
 .gitignore
