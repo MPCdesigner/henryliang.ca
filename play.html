@@ -24,7 +24,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/project.css">
-  <link rel="stylesheet" href="css/chess.css?v=14">
+  <link rel="stylesheet" href="css/chess.css?v=15">
 
   <script>
     (function () {
@@ -77,8 +77,8 @@
         capturing every piece of any one type. A GPU is allocated to your game
         for as long as you&rsquo;re playing, and the engine searches while you
         think. You can pick which <strong>training checkpoint</strong> to face:
-        <code>az_iter1200</code> is the current strongest, and the two earlier
-        ones were each the deployed engine in their turn.
+        <code>az_iter1300</code> is the one running by default, and the three
+        earlier ones were each the deployed engine in their turn.
       </p>
       <p class="playpage__note">
         New to the variant? <a href="/#variant">The rules differ in
@@ -97,9 +97,10 @@
           <label class="play__field">
             <span>Opponent</span>
             <select id="pl-model">
-              <option value="1200" selected>iter 1200 &middot; strongest</option>
-              <option value="1140">iter 1140 &middot; previous</option>
-              <option value="1040">iter 1040 &middot; older</option>
+              <option value="1300" selected>iter 1300 &middot; current</option>
+              <option value="1200">iter 1200</option>
+              <option value="1140">iter 1140</option>
+              <option value="1040">iter 1040</option>
             </select>
           </label>
           <!-- Labelled by clock rather than Easy/Standard/Strong: each tier
@@ -190,6 +191,6 @@
   </footer>
 
   <script src="js/main.js"></script>
-  <script src="js/chess.js?v=14"></script>
+  <script src="js/chess.js?v=15"></script>
 </body>
 </html>
